@@ -12,18 +12,44 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1"
 });
 
-export async function getDashboardResumen(): Promise<DashboardResumen> {
-  const { data } = await api.get<DashboardResumen>("/dashboard/resumen");
+type DashboardRange = {
+  fecha_desde?: string;
+  fecha_hasta?: string;
+};
+
+function toParams(range?: DashboardRange): Record<string, string> | undefined {
+  if (!range?.fecha_desde && !range?.fecha_hasta) {
+    return undefined;
+  }
+
+  const params: Record<string, string> = {};
+  if (range.fecha_desde) {
+    params.fecha_desde = range.fecha_desde;
+  }
+  if (range.fecha_hasta) {
+    params.fecha_hasta = range.fecha_hasta;
+  }
+  return params;
+}
+
+export async function getDashboardResumen(range?: DashboardRange): Promise<DashboardResumen> {
+  const { data } = await api.get<DashboardResumen>("/dashboard/resumen", {
+    params: toParams(range)
+  });
   return data;
 }
 
-export async function getDashboardPorTipo(): Promise<{ tipo: string; total_fabricada: number }[]> {
-  const { data } = await api.get<{ tipo: string; total_fabricada: number }[]>("/dashboard/por-tipo");
+export async function getDashboardPorTipo(range?: DashboardRange): Promise<{ tipo: string; total_fabricada: number }[]> {
+  const { data } = await api.get<{ tipo: string; total_fabricada: number }[]>("/dashboard/por-tipo", {
+    params: toParams(range)
+  });
   return data;
 }
 
-export async function getDashboardPorUnidad(): Promise<{ unidad: string; total_entregada: number }[]> {
-  const { data } = await api.get<{ unidad: string; total_entregada: number }[]>("/dashboard/por-unidad");
+export async function getDashboardPorUnidad(range?: DashboardRange): Promise<{ unidad: string; total_entregada: number }[]> {
+  const { data } = await api.get<{ unidad: string; total_entregada: number }[]>("/dashboard/por-unidad", {
+    params: toParams(range)
+  });
   return data;
 }
 

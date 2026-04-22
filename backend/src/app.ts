@@ -313,9 +313,22 @@ app.get("/api/v1/entregas", (req: Request, res: Response) => {
   return res.json(rows);
 });
 
-app.get("/api/v1/dashboard/resumen", (_req: Request, res: Response) => {
-  const totalFabricadas = estructuras.reduce((sum, row) => sum + row.cantidad_fabricada, 0);
-  const totalEntregadas = entregas.reduce((sum, row) => sum + row.cantidad_entregada, 0);
+function inDateRange(dateValue: string, fechaDesde?: string, fechaHasta?: string): boolean {
+  const isAfterStart = fechaDesde ? dateValue >= fechaDesde : true;
+  const isBeforeEnd = fechaHasta ? dateValue <= fechaHasta : true;
+  return isAfterStart && isBeforeEnd;
+}
+
+app.get("/api/v1/dashboard/resumen", (req: Request, res: Response) => {
+  const fechaDesde = typeof req.query.fecha_desde === "string" ? req.query.fecha_desde : undefined;
+  const fechaHasta = typeof req.query.fecha_hasta === "string" ? req.query.fecha_hasta : undefined;
+
+  const totalFabricadas = estructuras
+    .filter((row) => inDateRange(row.fecha_inicio, fechaDesde, fechaHasta))
+    .reduce((sum, row) => sum + row.cantidad_fabricada, 0);
+  const totalEntregadas = entregas
+    .filter((row) => inDateRange(row.fecha_entrega, fechaDesde, fechaHasta))
+    .reduce((sum, row) => sum + row.cantidad_entregada, 0);
   const pendientes = Math.max(totalFabricadas - totalEntregadas, 0);
   const cumplimiento = totalFabricadas === 0 ? 0 : Number(((totalEntregadas / totalFabricadas) * 100).toFixed(2));
 
@@ -327,10 +340,14 @@ app.get("/api/v1/dashboard/resumen", (_req: Request, res: Response) => {
   });
 });
 
-app.get("/api/v1/dashboard/por-tipo", (_req: Request, res: Response) => {
+app.get("/api/v1/dashboard/por-tipo", (req: Request, res: Response) => {
+  const fechaDesde = typeof req.query.fecha_desde === "string" ? req.query.fecha_desde : undefined;
+  const fechaHasta = typeof req.query.fecha_hasta === "string" ? req.query.fecha_hasta : undefined;
+
   const rows = tiposEstructura.map((tipo) => {
     const total = estructuras
       .filter((row) => row.tipo_id === tipo.id)
+      .filter((row) => inDateRange(row.fecha_inicio, fechaDesde, fechaHasta))
       .reduce((sum, row) => sum + row.cantidad_fabricada, 0);
     return { tipo: tipo.nombre, total_fabricada: total };
   });
@@ -338,10 +355,14 @@ app.get("/api/v1/dashboard/por-tipo", (_req: Request, res: Response) => {
   res.json(rows);
 });
 
-app.get("/api/v1/dashboard/por-unidad", (_req: Request, res: Response) => {
+app.get("/api/v1/dashboard/por-unidad", (req: Request, res: Response) => {
+  const fechaDesde = typeof req.query.fecha_desde === "string" ? req.query.fecha_desde : undefined;
+  const fechaHasta = typeof req.query.fecha_hasta === "string" ? req.query.fecha_hasta : undefined;
+
   const rows = unidadesNegocio.map((unidad) => {
     const total = entregas
       .filter((row) => row.unidad_id === unidad.id)
+      .filter((row) => inDateRange(row.fecha_entrega, fechaDesde, fechaHasta))
       .reduce((sum, row) => sum + row.cantidad_entregada, 0);
     return { unidad: unidad.nombre, total_entregada: total };
   });

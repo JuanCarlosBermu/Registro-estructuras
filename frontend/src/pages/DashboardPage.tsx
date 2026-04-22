@@ -19,25 +19,53 @@ export default function DashboardPage() {
   const [resumen, setResumen] = useState<DashboardResumen | null>(null);
   const [porTipo, setPorTipo] = useState<{ tipo: string; total_fabricada: number }[]>([]);
   const [porUnidad, setPorUnidad] = useState<{ unidad: string; total_entregada: number }[]>([]);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function load() {
+  async function load(range?: { fecha_desde?: string; fecha_hasta?: string }) {
+    setLoading(true);
+    setError("");
+    try {
       const [resumenData, tipoData, unidadData] = await Promise.all([
-        getDashboardResumen(),
-        getDashboardPorTipo(),
-        getDashboardPorUnidad()
+        getDashboardResumen(range),
+        getDashboardPorTipo(range),
+        getDashboardPorUnidad(range)
       ]);
       setResumen(resumenData);
       setPorTipo(tipoData);
       setPorUnidad(unidadData);
-    }
-
-    load().catch(() => {
+    } catch (_err) {
       setResumen({ total_fabricadas: 0, total_entregadas: 0, pendientes: 0, cumplimiento_pct: 0 });
       setPorTipo([]);
       setPorUnidad([]);
-    });
+      setError("No se pudo cargar el dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
   }, []);
+
+  function onApplyFilter() {
+    if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+      setError("La fecha inicial no puede ser mayor a la final.");
+      return;
+    }
+    load({
+      fecha_desde: fechaDesde || undefined,
+      fecha_hasta: fechaHasta || undefined
+    });
+  }
+
+  function onClearFilter() {
+    setFechaDesde("");
+    setFechaHasta("");
+    load();
+  }
 
   const cards = useMemo(
     () => [
@@ -51,6 +79,74 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <section style={cardStyle()}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>Filtro de tiempo</h2>
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
+            Desde
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(event) => setFechaDesde(event.target.value)}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                padding: "9px 10px",
+                fontSize: 13
+              }}
+            />
+          </label>
+          <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
+            Hasta
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(event) => setFechaHasta(event.target.value)}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                padding: "9px 10px",
+                fontSize: 13
+              }}
+            />
+          </label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={onApplyFilter}
+              style={{
+                flex: 1,
+                border: "none",
+                borderRadius: 10,
+                padding: "9px 10px",
+                background: "#2563eb",
+                color: "#fff",
+                fontWeight: 700
+              }}
+            >
+              Aplicar
+            </button>
+            <button
+              type="button"
+              onClick={onClearFilter}
+              style={{
+                flex: 1,
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                padding: "9px 10px",
+                background: "#fff",
+                color: "#334155",
+                fontWeight: 700
+              }}
+            >
+              Limpiar
+            </button>
+          </div>
+          {loading ? <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Cargando...</p> : null}
+          {error ? <p style={{ margin: 0, fontSize: 12, color: "#dc2626" }}>{error}</p> : null}
+        </div>
+      </section>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {cards.map((item) => (
           <div key={item.label} style={cardStyle()}>
