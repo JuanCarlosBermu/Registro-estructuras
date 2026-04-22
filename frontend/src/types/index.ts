@@ -35,3 +35,20 @@ export type EntregaCreate = {
   evidencia_url?: string | null;
   comentarios?: string | null;
 };
+
+export type TipoEstructura = {
+  id: number;
+  nombre: string;
+  activo: boolean;
+};
+
+export type EstructuraCreate = {
+  tipo_id: number;
+  descripcion: string;
+  cantidad_fabricada: number;
+  fecha_inicio: string;
+  fecha_termino?: string | null;
+  responsable: string;
+  costo_estimado?: number | null;
+  observaciones?: string | null;
+};

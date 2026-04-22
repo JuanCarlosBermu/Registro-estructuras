@@ -1,5 +1,12 @@
 import axios from "axios";
-import type { DashboardResumen, EntregaCreate, Estructura, UnidadNegocio } from "../types";
+import type {
+  DashboardResumen,
+  EntregaCreate,
+  Estructura,
+  EstructuraCreate,
+  TipoEstructura,
+  UnidadNegocio
+} from "../types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1"
@@ -27,6 +34,16 @@ export async function getEstructuras(): Promise<Estructura[]> {
 
 export async function getUnidades(): Promise<UnidadNegocio[]> {
   const { data } = await api.get<UnidadNegocio[]>("/unidades-negocio");
+  return data;
+}
+
+export async function getTiposEstructura(): Promise<TipoEstructura[]> {
+  const { data } = await api.get<TipoEstructura[]>("/tipos-estructura");
+  return data;
+}
+
+export async function postEstructura(payload: EstructuraCreate): Promise<Estructura> {
+  const { data } = await api.post<Estructura>("/estructuras", payload);
   return data;
 }
 

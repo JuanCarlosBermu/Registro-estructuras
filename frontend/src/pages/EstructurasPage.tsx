@@ -23,6 +23,23 @@ export default function EstructurasPage() {
 
   return (
     <div style={{ display: "grid", gap: 10 }}>
+      <Link
+        to="/estructuras/nueva"
+        style={{
+          display: "inline-block",
+          textDecoration: "none",
+          borderRadius: 10,
+          padding: "10px 12px",
+          background: "#16a34a",
+          color: "white",
+          fontWeight: 700,
+          fontSize: 14,
+          textAlign: "center"
+        }}
+      >
+        + Nueva estructura
+      </Link>
+
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
         {["todos", "pendiente", "en_proceso", "terminada", "entregada"].map((item) => (
           <button
