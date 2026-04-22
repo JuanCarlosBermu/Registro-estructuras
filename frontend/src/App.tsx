@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+import CatalogosPage from "./pages/CatalogosPage";
 import DashboardPage from "./pages/DashboardPage";
 import EstructurasPage from "./pages/EstructurasPage";
 import NuevaEstructuraPage from "./pages/NuevaEstructuraPage";
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/estructuras" element={<EstructurasPage />} />
         <Route path="/estructuras/nueva" element={<NuevaEstructuraPage />} />
         <Route path="/estructuras/:id/entregar" element={<RegistrarEntregaPage />} />
+        <Route path="/catalogos" element={<CatalogosPage />} />
       </Route>
     </Routes>
   );

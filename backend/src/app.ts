@@ -26,8 +26,114 @@ app.get("/api/v1/tipos-estructura", (_req: Request, res: Response) => {
   res.json(tiposEstructura);
 });
 
+app.post("/api/v1/tipos-estructura", (req: Request, res: Response) => {
+  const { nombre } = req.body as Record<string, unknown>;
+  if (typeof nombre !== "string" || !nombre.trim()) {
+    return res.status(400).json({
+      error: "VALIDATION_ERROR",
+      message: "Nombre es obligatorio"
+    });
+  }
+
+  const cleanName = nombre.trim();
+  const duplicate = tiposEstructura.find((item) => item.nombre.toLowerCase() === cleanName.toLowerCase());
+  if (duplicate) {
+    return res.status(409).json({
+      error: "DUPLICATE",
+      message: "El tipo de estructura ya existe"
+    });
+  }
+
+  const nextId = tiposEstructura.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+  const row = { id: nextId, nombre: cleanName, activo: true };
+  tiposEstructura.push(row);
+  return res.status(201).json(row);
+});
+
+app.delete("/api/v1/tipos-estructura/:id", (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "VALIDATION_ERROR",
+      message: "Id invalido"
+    });
+  }
+
+  const index = tiposEstructura.findIndex((item) => item.id === id);
+  if (index < 0) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Tipo no existe" });
+  }
+
+  const inUse = estructuras.some((item) => item.tipo_id === id);
+  if (inUse) {
+    return res.status(409).json({
+      error: "TYPE_IN_USE",
+      message: "No se puede quitar un tipo ya asignado a estructuras"
+    });
+  }
+
+  const [removed] = tiposEstructura.splice(index, 1);
+  return res.json(removed);
+});
+
 app.get("/api/v1/unidades-negocio", (_req: Request, res: Response) => {
   res.json(unidadesNegocio);
+});
+
+app.post("/api/v1/unidades-negocio", (req: Request, res: Response) => {
+  const { nombre, ubicacion } = req.body as Record<string, unknown>;
+  if (typeof nombre !== "string" || !nombre.trim()) {
+    return res.status(400).json({
+      error: "VALIDATION_ERROR",
+      message: "Nombre es obligatorio"
+    });
+  }
+
+  const cleanName = nombre.trim();
+  const duplicate = unidadesNegocio.find((item) => item.nombre.toLowerCase() === cleanName.toLowerCase());
+  if (duplicate) {
+    return res.status(409).json({
+      error: "DUPLICATE",
+      message: "La unidad de negocio ya existe"
+    });
+  }
+
+  const nextId = unidadesNegocio.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+  const row = {
+    id: nextId,
+    nombre: cleanName,
+    ubicacion: typeof ubicacion === "string" ? ubicacion.trim() : "",
+    activo: true
+  };
+  unidadesNegocio.push(row);
+  return res.status(201).json(row);
+});
+
+app.delete("/api/v1/unidades-negocio/:id", (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "VALIDATION_ERROR",
+      message: "Id invalido"
+    });
+  }
+
+  const index = unidadesNegocio.findIndex((item) => item.id === id);
+  if (index < 0) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Unidad no existe" });
+  }
+
+  const inUseInEstructuras = estructuras.some((item) => item.unidad_destino_id === id);
+  const inUseInEntregas = entregas.some((item) => item.unidad_id === id);
+  if (inUseInEstructuras || inUseInEntregas) {
+    return res.status(409).json({
+      error: "UNIT_IN_USE",
+      message: "No se puede quitar una unidad que ya tiene movimientos"
+    });
+  }
+
+  const [removed] = unidadesNegocio.splice(index, 1);
+  return res.json(removed);
 });
 
 app.get("/api/v1/estructuras", (req: Request, res: Response) => {
@@ -80,12 +186,12 @@ app.post("/api/v1/estructuras", (req: Request, res: Response) => {
     });
   }
 
-  const tipo = tiposEstructura.find((item) => item.id === tipo_id);
+  const tipo = tiposEstructura.find((item) => item.id === tipo_id && item.activo);
   if (!tipo) {
     return res.status(404).json({ error: "TIPO_NOT_FOUND", message: "Tipo no existe" });
   }
 
-  const unidadDestino = unidadesNegocio.find((item) => item.id === unidad_destino_id);
+  const unidadDestino = unidadesNegocio.find((item) => item.id === unidad_destino_id && item.activo);
   if (!unidadDestino) {
     return res.status(404).json({ error: "UNIDAD_NOT_FOUND", message: "Unidad destino no existe" });
   }

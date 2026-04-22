@@ -40,6 +40,9 @@ export default function Layout() {
         <NavLink to="/estructuras" style={navLinkStyle}>
           Estructuras
         </NavLink>
+        <NavLink to="/catalogos" style={navLinkStyle}>
+          Catalogos
+        </NavLink>
       </nav>
     </div>
   );

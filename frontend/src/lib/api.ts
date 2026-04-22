@@ -42,6 +42,24 @@ export async function getTiposEstructura(): Promise<TipoEstructura[]> {
   return data;
 }
 
+export async function postTipoEstructura(nombre: string): Promise<TipoEstructura> {
+  const { data } = await api.post<TipoEstructura>("/tipos-estructura", { nombre });
+  return data;
+}
+
+export async function deleteTipoEstructura(id: number): Promise<void> {
+  await api.delete(`/tipos-estructura/${id}`);
+}
+
+export async function postUnidadNegocio(payload: { nombre: string; ubicacion?: string }): Promise<UnidadNegocio> {
+  const { data } = await api.post<UnidadNegocio>("/unidades-negocio", payload);
+  return data;
+}
+
+export async function deleteUnidadNegocio(id: number): Promise<void> {
+  await api.delete(`/unidades-negocio/${id}`);
+}
+
 export async function postEstructura(payload: EstructuraCreate): Promise<Estructura> {
   const { data } = await api.post<Estructura>("/estructuras", payload);
   return data;
