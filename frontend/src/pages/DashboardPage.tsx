@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activePreset, setActivePreset] = useState<"" | "today" | "week" | "month" | "threeMonths">("");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   async function load(range?: DashboardRange) {
     setLoading(true);
@@ -124,9 +125,28 @@ export default function DashboardPage() {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <section style={cardStyle()}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600 }}>Filtro de tiempo</h2>
-        <div style={{ display: "grid", gap: 8 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => setFilterOpen((prev) => !prev)}
+          style={{
+            width: "100%",
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer"
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#111827" }}>Filtro de tiempo</h2>
+          <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>{filterOpen ? "Ocultar" : "Mostrar"}</span>
+        </button>
+
+        {filterOpen ? (
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             <button type="button" style={quickButtonStyle(activePreset === "today")} onClick={() => onQuickFilter("today")}>
               Hoy
             </button>
@@ -143,9 +163,9 @@ export default function DashboardPage() {
             >
               3 meses
             </button>
-          </div>
+            </div>
 
-          <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
+            <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
             Desde
             <input
               type="date"
@@ -158,8 +178,8 @@ export default function DashboardPage() {
                 fontSize: 13
               }}
             />
-          </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
+            </label>
+            <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
             Hasta
             <input
               type="date"
@@ -172,8 +192,8 @@ export default function DashboardPage() {
                 fontSize: 13
               }}
             />
-          </label>
-          <div style={{ display: "flex", gap: 8 }}>
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               onClick={onApplyFilter}
@@ -206,10 +226,11 @@ export default function DashboardPage() {
             >
               Limpiar
             </button>
+            </div>
+            {loading ? <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Cargando...</p> : null}
+            {error ? <p style={{ margin: 0, fontSize: 12, color: "#dc2626" }}>{error}</p> : null}
           </div>
-          {loading ? <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Cargando...</p> : null}
-          {error ? <p style={{ margin: 0, fontSize: 12, color: "#dc2626" }}>{error}</p> : null}
-        </div>
+        ) : null}
       </section>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
