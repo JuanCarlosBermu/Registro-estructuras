@@ -20,77 +20,11 @@ export const unidadesNegocio: UnidadNegocio[] = [
   { id: 6, nombre: "Almacen", ubicacion: "CEDIS", activo: true }
 ];
 
-export const estructuras: Estructura[] = [
-  {
-    id: randomUUID(),
-    folio: "EST-2026-0001",
-    tipo_id: 1,
-    descripcion: "Mesa inox 1.5m",
-    unidad_destino_id: 2,
-    cantidad_fabricada: 10,
-    estado: "terminada",
-    fecha_inicio: "2026-04-01",
-    fecha_termino: "2026-04-03",
-    responsable: "Juan Perez",
-    costo_estimado: 12500,
-    observaciones: "Lote para area de ensamble"
-  },
-  {
-    id: randomUUID(),
-    folio: "EST-2026-0002",
-    tipo_id: 5,
-    descripcion: "Conveyor de rodillos 4m",
-    unidad_destino_id: 1,
-    cantidad_fabricada: 2,
-    estado: "en_proceso",
-    fecha_inicio: "2026-04-05",
-    fecha_termino: null,
-    responsable: "Luis Gomez",
-    costo_estimado: 24000,
-    observaciones: "Pendiente pintura"
-  },
-  {
-    id: randomUUID(),
-    folio: "EST-2026-0003",
-    tipo_id: 3,
-    descripcion: "Rack de carga media",
-    unidad_destino_id: 5,
-    cantidad_fabricada: 8,
-    estado: "pendiente",
-    fecha_inicio: "2026-04-08",
-    fecha_termino: null,
-    responsable: "Ana Ruiz",
-    costo_estimado: 15000,
-    observaciones: null
-  }
-];
+export const estructuras: Estructura[] = [];
 
-export const entregas: Entrega[] = [
-  {
-    id: randomUUID(),
-    estructura_id: estructuras[0].id,
-    unidad_id: 2,
-    cantidad_entregada: 6,
-    fecha_entrega: "2026-04-04",
-    recibido_por: "Carlos Diaz",
-    evidencia_url: null,
-    comentarios: "Entrega parcial",
-    created_at: new Date().toISOString()
-  },
-  {
-    id: randomUUID(),
-    estructura_id: estructuras[0].id,
-    unidad_id: 1,
-    cantidad_entregada: 4,
-    fecha_entrega: "2026-04-06",
-    recibido_por: "Maria Lopez",
-    evidencia_url: null,
-    comentarios: "Entrega total",
-    created_at: new Date().toISOString()
-  }
-];
+export const entregas: Entrega[] = [];
 
-let folioSeq = 4;
+let folioSeq = 1;
 
 export function nextFolio(): string {
   const padded = String(folioSeq).padStart(4, "0");
