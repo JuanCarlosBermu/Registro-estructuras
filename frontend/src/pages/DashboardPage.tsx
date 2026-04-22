@@ -5,14 +5,47 @@ import { getDashboardPorTipo, getDashboardPorUnidad, getDashboardResumen } from 
 import type { DashboardResumen } from "../types";
 
 const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#334155"];
+type DashboardRange = { fecha_desde?: string; fecha_hasta?: string };
 
 function cardStyle(): CSSProperties {
   return {
-    border: "1px solid #e2e8f0",
-    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
     padding: 12,
     background: "#fff"
   };
+}
+
+function toDateInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function subtractDays(base: Date, days: number): Date {
+  const copy = new Date(base);
+  copy.setDate(copy.getDate() - days);
+  return copy;
+}
+
+function quickRange(type: "today" | "week" | "month" | "threeMonths"): DashboardRange {
+  const today = new Date();
+  const end = toDateInput(today);
+
+  if (type === "today") {
+    return { fecha_desde: end, fecha_hasta: end };
+  }
+
+  if (type === "week") {
+    return { fecha_desde: toDateInput(subtractDays(today, 6)), fecha_hasta: end };
+  }
+
+  if (type === "month") {
+    return { fecha_desde: toDateInput(subtractDays(today, 29)), fecha_hasta: end };
+  }
+
+  return { fecha_desde: toDateInput(subtractDays(today, 89)), fecha_hasta: end };
 }
 
 export default function DashboardPage() {
@@ -23,8 +56,9 @@ export default function DashboardPage() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activePreset, setActivePreset] = useState<"" | "today" | "week" | "month" | "threeMonths">("");
 
-  async function load(range?: { fecha_desde?: string; fecha_hasta?: string }) {
+  async function load(range?: DashboardRange) {
     setLoading(true);
     setError("");
     try {
@@ -55,6 +89,7 @@ export default function DashboardPage() {
       setError("La fecha inicial no puede ser mayor a la final.");
       return;
     }
+    setActivePreset("");
     load({
       fecha_desde: fechaDesde || undefined,
       fecha_hasta: fechaHasta || undefined
@@ -64,7 +99,16 @@ export default function DashboardPage() {
   function onClearFilter() {
     setFechaDesde("");
     setFechaHasta("");
+    setActivePreset("");
     load();
+  }
+
+  function onQuickFilter(type: "today" | "week" | "month" | "threeMonths") {
+    const range = quickRange(type);
+    setFechaDesde(range.fecha_desde ?? "");
+    setFechaHasta(range.fecha_hasta ?? "");
+    setActivePreset(type);
+    load(range);
   }
 
   const cards = useMemo(
@@ -80,8 +124,27 @@ export default function DashboardPage() {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <section style={cardStyle()}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>Filtro de tiempo</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600 }}>Filtro de tiempo</h2>
         <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            <button type="button" style={quickButtonStyle(activePreset === "today")} onClick={() => onQuickFilter("today")}>
+              Hoy
+            </button>
+            <button type="button" style={quickButtonStyle(activePreset === "week")} onClick={() => onQuickFilter("week")}>
+              Ultima semana
+            </button>
+            <button type="button" style={quickButtonStyle(activePreset === "month")} onClick={() => onQuickFilter("month")}>
+              Ultimo mes
+            </button>
+            <button
+              type="button"
+              style={quickButtonStyle(activePreset === "threeMonths")}
+              onClick={() => onQuickFilter("threeMonths")}
+            >
+              3 meses
+            </button>
+          </div>
+
           <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#334155" }}>
             Desde
             <input
@@ -89,9 +152,9 @@ export default function DashboardPage() {
               value={fechaDesde}
               onChange={(event) => setFechaDesde(event.target.value)}
               style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 10,
-                padding: "9px 10px",
+                border: "1px solid #d1d5db",
+                borderRadius: 8,
+                padding: "8px 9px",
                 fontSize: 13
               }}
             />
@@ -103,9 +166,9 @@ export default function DashboardPage() {
               value={fechaHasta}
               onChange={(event) => setFechaHasta(event.target.value)}
               style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 10,
-                padding: "9px 10px",
+                border: "1px solid #d1d5db",
+                borderRadius: 8,
+                padding: "8px 9px",
                 fontSize: 13
               }}
             />
@@ -117,11 +180,12 @@ export default function DashboardPage() {
               style={{
                 flex: 1,
                 border: "none",
-                borderRadius: 10,
-                padding: "9px 10px",
-                background: "#2563eb",
+                borderRadius: 8,
+                padding: "8px 10px",
+                background: "#111827",
                 color: "#fff",
-                fontWeight: 700
+                fontWeight: 600,
+                fontSize: 13
               }}
             >
               Aplicar
@@ -131,12 +195,13 @@ export default function DashboardPage() {
               onClick={onClearFilter}
               style={{
                 flex: 1,
-                border: "1px solid #cbd5e1",
-                borderRadius: 10,
-                padding: "9px 10px",
+                border: "1px solid #d1d5db",
+                borderRadius: 8,
+                padding: "8px 10px",
                 background: "#fff",
                 color: "#334155",
-                fontWeight: 700
+                fontWeight: 600,
+                fontSize: 13
               }}
             >
               Limpiar
@@ -151,13 +216,13 @@ export default function DashboardPage() {
         {cards.map((item) => (
           <div key={item.label} style={cardStyle()}>
             <p style={{ margin: 0, color: "#64748b", fontSize: 12 }}>{item.label}</p>
-            <p style={{ margin: "6px 0 0", fontSize: 24, fontWeight: 700 }}>{item.value}</p>
+            <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 700 }}>{item.value}</p>
           </div>
         ))}
       </div>
 
       <section style={cardStyle()}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>Fabricacion por tipo</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600 }}>Fabricacion por tipo</h2>
         <div style={{ width: "100%", height: 220 }}>
           <ResponsiveContainer>
             <BarChart data={porTipo}>
@@ -171,7 +236,7 @@ export default function DashboardPage() {
       </section>
 
       <section style={cardStyle()}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>Entregas por unidad</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600 }}>Entregas por unidad</h2>
         <div style={{ width: "100%", height: 220 }}>
           <ResponsiveContainer>
             <PieChart>
@@ -187,4 +252,16 @@ export default function DashboardPage() {
       </section>
     </div>
   );
+}
+
+function quickButtonStyle(active: boolean): CSSProperties {
+  return {
+    border: `1px solid ${active ? "#111827" : "#d1d5db"}`,
+    borderRadius: 8,
+    padding: "7px 8px",
+    background: active ? "#111827" : "#fff",
+    color: active ? "#fff" : "#374151",
+    fontSize: 12,
+    fontWeight: 600
+  };
 }
