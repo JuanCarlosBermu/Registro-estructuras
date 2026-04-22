@@ -80,6 +80,9 @@ export default function EstructurasPage() {
             {item.tipo_nombre} - {item.descripcion}
           </p>
           <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 13 }}>
+            Destino: {item.unidad_destino_nombre ?? "N/A"}
+          </p>
+          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 13 }}>
             Fabricada: {item.cantidad_fabricada} | Entregada: {item.cantidad_entregada_total ?? 0} | Pendiente:{" "}
             {item.saldo_pendiente ?? item.cantidad_fabricada}
           </p>

@@ -10,6 +10,8 @@ export type Estructura = {
   folio: string;
   tipo_id: number;
   tipo_nombre?: string;
+  unidad_destino_id: number;
+  unidad_destino_nombre?: string;
   descripcion: string;
   cantidad_fabricada: number;
   estado: "pendiente" | "en_proceso" | "terminada" | "entregada";
@@ -44,6 +46,7 @@ export type TipoEstructura = {
 
 export type EstructuraCreate = {
   tipo_id: number;
+  unidad_destino_id: number;
   descripcion: string;
   cantidad_fabricada: number;
   fecha_inicio: string;

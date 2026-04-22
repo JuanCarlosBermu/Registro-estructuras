@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getTiposEstructura, postEstructura } from "../lib/api";
-import type { TipoEstructura } from "../types";
+import { getTiposEstructura, getUnidades, postEstructura } from "../lib/api";
+import type { TipoEstructura, UnidadNegocio } from "../types";
 
 export default function NuevaEstructuraPage() {
   const navigate = useNavigate();
   const [tipos, setTipos] = useState<TipoEstructura[]>([]);
+  const [unidades, setUnidades] = useState<UnidadNegocio[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     tipo_id: 1,
+    unidad_destino_id: 1,
     descripcion: "",
     cantidad_fabricada: 1,
     fecha_inicio: new Date().toISOString().slice(0, 10),
@@ -31,6 +33,16 @@ export default function NuevaEstructuraPage() {
         }
       })
       .catch(() => setTipos([]));
+
+    getUnidades()
+      .then((items) => {
+        const activos = items.filter((item) => item.activo);
+        setUnidades(activos);
+        if (activos.length > 0) {
+          setForm((prev) => ({ ...prev, unidad_destino_id: activos[0].id }));
+        }
+      })
+      .catch(() => setUnidades([]));
   }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -51,6 +63,7 @@ export default function NuevaEstructuraPage() {
     try {
       await postEstructura({
         tipo_id: form.tipo_id,
+        unidad_destino_id: form.unidad_destino_id,
         descripcion: form.descripcion.trim(),
         cantidad_fabricada: form.cantidad_fabricada,
         fecha_inicio: form.fecha_inicio,
@@ -81,6 +94,21 @@ export default function NuevaEstructuraPage() {
             {tipos.map((tipo) => (
               <option key={tipo.id} value={tipo.id}>
                 {tipo.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={labelStyle()}>
+          Unidad de negocio destino
+          <select
+            value={form.unidad_destino_id}
+            onChange={(e) => setForm({ ...form, unidad_destino_id: Number(e.target.value) })}
+            style={inputStyle()}
+          >
+            {unidades.map((unidad) => (
+              <option key={unidad.id} value={unidad.id}>
+                {unidad.nombre}
               </option>
             ))}
           </select>

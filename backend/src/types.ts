@@ -17,6 +17,7 @@ export type Estructura = {
   id: string;
   folio: string;
   tipo_id: number;
+  unidad_destino_id: number;
   descripcion: string;
   cantidad_fabricada: number;
   estado: EstadoEstructura;
