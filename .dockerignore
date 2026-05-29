@@ -1,0 +1,10 @@
+.git
+.gitignore
+.github
+*.md
+node_modules
+dist
+.env
+.env.local
+.gitkeep
+**/.DS_Store

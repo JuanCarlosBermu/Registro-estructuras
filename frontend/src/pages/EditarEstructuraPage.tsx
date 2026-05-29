@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { getTiposEstructura, getUnidades, postEstructura } from "../lib/api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { getEstructuraById, getTiposEstructura, getUnidades, putEstructura } from "../lib/api";
 import type { TipoEstructura, UnidadNegocio } from "../types";
 
-export default function NuevaEstructuraPage() {
+export default function EditarEstructuraPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tipos, setTipos] = useState<TipoEstructura[]>([]);
   const [unidades, setUnidades] = useState<UnidadNegocio[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,7 +18,7 @@ export default function NuevaEstructuraPage() {
     unidad_destino_id: 1,
     descripcion: "",
     cantidad_fabricada: 1,
-    fecha_inicio: new Date().toISOString().slice(0, 10),
+    fecha_inicio: "",
     fecha_termino: "",
     responsable: "",
     costo_estimado: "",
@@ -26,30 +28,38 @@ export default function NuevaEstructuraPage() {
   });
 
   useEffect(() => {
-    getTiposEstructura()
-      .then((items) => {
-        const activos = items.filter((item) => item.activo);
-        setTipos(activos);
-        if (activos.length > 0) {
-          setForm((prev) => ({ ...prev, tipo_id: activos[0].id }));
-        }
-      })
-      .catch(() => setTipos([]));
+    if (!id) return;
 
-    getUnidades()
-      .then((items) => {
-        const activos = items.filter((item) => item.activo);
-        setUnidades(activos);
-        if (activos.length > 0) {
-          setForm((prev) => ({ ...prev, unidad_destino_id: activos[0].id }));
-        }
+    Promise.all([getEstructuraById(id), getTiposEstructura(), getUnidades()])
+      .then(([estructura, tiposData, unidadesData]) => {
+        const tiposActivos = tiposData.filter((item) => item.activo);
+        const unidadesActivas = unidadesData.filter((item) => item.activo);
+        setTipos(tiposActivos);
+        setUnidades(unidadesActivas);
+
+        setForm({
+          tipo_id: estructura.tipo_id,
+          unidad_destino_id: estructura.unidad_destino_id,
+          descripcion: estructura.descripcion,
+          cantidad_fabricada: estructura.cantidad_fabricada,
+          fecha_inicio: estructura.fecha_inicio,
+          fecha_termino: estructura.fecha_termino ?? "",
+          responsable: estructura.responsable,
+          costo_estimado: "",
+          observaciones: "",
+          linea_produccion: estructura.linea_produccion ?? "",
+          estacion: estructura.estacion ?? ""
+        });
       })
-      .catch(() => setUnidades([]));
-  }, []);
+      .catch(() => setError("No se pudo cargar la estructura"))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    if (!id) return;
 
     if (!form.descripcion.trim() || !form.responsable.trim()) {
       setError("Completa descripcion y responsable.");
@@ -63,7 +73,7 @@ export default function NuevaEstructuraPage() {
 
     setSaving(true);
     try {
-      await postEstructura({
+      await putEstructura(id, {
         tipo_id: form.tipo_id,
         unidad_destino_id: form.unidad_destino_id,
         descripcion: form.descripcion.trim(),
@@ -76,17 +86,21 @@ export default function NuevaEstructuraPage() {
         linea_produccion: form.linea_produccion.trim() ? form.linea_produccion.trim() : null,
         estacion: form.estacion.trim() ? form.estacion.trim() : null
       });
-      navigate("/estructuras");
+      navigate(`/estructuras/${id}`);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? "No se pudo crear la estructura.");
+      setError(err?.response?.data?.message ?? "No se pudo actualizar la estructura.");
     } finally {
       setSaving(false);
     }
   }
 
+  if (loading) {
+    return <p style={{ textAlign: "center", color: "#64748b" }}>Cargando...</p>;
+  }
+
   return (
     <div>
-      <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>Nueva estructura</h2>
+      <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>Editar estructura</h2>
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
         <label style={labelStyle()}>
           Tipo de estructura
@@ -223,16 +237,16 @@ export default function NuevaEstructuraPage() {
             border: "none",
             borderRadius: 10,
             padding: "10px 12px",
-            background: saving ? "#94a3b8" : "#16a34a",
+            background: saving ? "#94a3b8" : "#2563eb",
             color: "#fff",
             fontWeight: 700
           }}
         >
-          {saving ? "Guardando..." : "Crear estructura"}
+          {saving ? "Guardando..." : "Actualizar estructura"}
         </button>
 
-        <Link to="/estructuras" style={{ textAlign: "center", color: "#2563eb", fontWeight: 600 }}>
-          Regresar
+        <Link to={`/estructuras/${id}`} style={{ textAlign: "center", color: "#2563eb", fontWeight: 600 }}>
+          Cancelar
         </Link>
       </form>
     </div>

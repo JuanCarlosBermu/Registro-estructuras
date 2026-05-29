@@ -10,6 +10,7 @@ export type Estructura = {
   folio: string;
   tipo_id: number;
   tipo_nombre?: string;
+  tipo_modelo_url?: string | null;
   unidad_destino_id: number;
   unidad_destino_nombre?: string;
   descripcion: string;
@@ -20,6 +21,8 @@ export type Estructura = {
   responsable: string;
   cantidad_entregada_total?: number;
   saldo_pendiente?: number;
+  linea_produccion?: string | null;
+  estacion?: string | null;
 };
 
 export type UnidadNegocio = {
@@ -42,6 +45,7 @@ export type TipoEstructura = {
   id: number;
   nombre: string;
   activo: boolean;
+  modelo_url?: string | null;
 };
 
 export type EstructuraCreate = {
@@ -54,4 +58,6 @@ export type EstructuraCreate = {
   responsable: string;
   costo_estimado?: number | null;
   observaciones?: string | null;
+  linea_produccion?: string | null;
+  estacion?: string | null;
 };

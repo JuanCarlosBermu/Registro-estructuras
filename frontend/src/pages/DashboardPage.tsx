@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, Cell } from "recharts";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { getDashboardPorTipo, getDashboardPorUnidad, getDashboardResumen } from "../lib/api";
 import type { DashboardResumen } from "../types";
+import { DashboardSkeleton } from "../components/Skeleton";
+import { useToast } from "../contexts/ToastContext";
 
 const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#334155"];
 type DashboardRange = { fecha_desde?: string; fecha_hasta?: string };
@@ -58,6 +62,9 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [activePreset, setActivePreset] = useState<"" | "today" | "week" | "month" | "threeMonths">("");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   async function load(range?: DashboardRange) {
     setLoading(true);
@@ -112,6 +119,59 @@ export default function DashboardPage() {
     load(range);
   }
 
+  async function exportToPdf() {
+    if (!dashboardRef.current) return;
+    
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 1.5,
+        backgroundColor: "#ffffff",
+        logging: false,
+        useCORS: true
+      });
+
+      const imgWidth = 190;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const pdf = new jsPDF("p", "mm", "a4");
+      
+      pdf.setFontSize(16);
+      pdf.text("Dashboard - LeanShop", 105, 12, { align: "center" });
+      
+      pdf.setFontSize(9);
+      const fecha = new Date().toLocaleDateString("es-MX");
+      pdf.text(`Generado: ${fecha}`, 105, 18, { align: "center" });
+      
+      let position = 24;
+      const imgData = canvas.toDataURL("image/jpeg", 0.8);
+      
+      if (imgHeight < pageHeight - position - 10) {
+        pdf.addImage(imgData, "JPEG", 10, position, imgWidth, imgHeight);
+      } else {
+        let heightLeft = imgHeight;
+        pdf.addImage(imgData, "JPEG", 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight - position;
+        
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 10, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+      }
+      
+      pdf.save(`dashboard-${fecha.replace(/\//g, "-")}.pdf`);
+      showToast("PDF exportado exitosamente", "success");
+    } catch (err) {
+      console.error("Error exporting PDF:", err);
+      showToast("No se pudo exportar el PDF", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const cards = useMemo(
     () => [
       { label: "Fabricadas", value: resumen?.total_fabricadas ?? 0 },
@@ -122,27 +182,50 @@ export default function DashboardPage() {
     [resumen]
   );
 
+  if (loading && !resumen) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <section style={cardStyle()}>
-        <button
-          type="button"
-          onClick={() => setFilterOpen((prev) => !prev)}
-          style={{
-            width: "100%",
-            border: "none",
-            background: "transparent",
-            padding: 0,
-            margin: 0,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            cursor: "pointer"
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#111827" }}>Filtro de tiempo</h2>
-          <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>{filterOpen ? "Ocultar" : "Mostrar"}</span>
-        </button>
+      <button
+        type="button"
+        onClick={exportToPdf}
+        disabled={exporting}
+        style={{
+          border: "none",
+          borderRadius: 10,
+          padding: "10px 12px",
+          background: exporting ? "#94a3b8" : "#7c3aed",
+          color: "white",
+          fontWeight: 700,
+          fontSize: 14,
+          cursor: exporting ? "not-allowed" : "pointer"
+        }}
+      >
+        {exporting ? "Exportando..." : "Exportar PDF"}
+      </button>
+
+      <div ref={dashboardRef} style={{ display: "grid", gap: 12 }}>
+        <section style={cardStyle()}>
+          <button
+            type="button"
+            onClick={() => setFilterOpen((prev) => !prev)}
+            style={{
+              width: "100%",
+              border: "none",
+              background: "transparent",
+              padding: 0,
+              margin: 0,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer"
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#111827" }}>Filtro de tiempo</h2>
+            <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>{filterOpen ? "Ocultar" : "Mostrar"}</span>
+          </button>
 
         {filterOpen ? (
           <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
@@ -271,6 +354,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
       </section>
+      </div>
     </div>
   );
 }

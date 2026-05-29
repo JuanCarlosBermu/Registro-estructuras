@@ -1,0 +1,11 @@
+.git
+.github
+*.md
+node_modules
+dist
+.env
+.env.local
+.gitkeep
+**/.DS_Store
+start-all.sh
+generar_mesa.py

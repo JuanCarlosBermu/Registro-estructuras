@@ -1,22 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import {
+  deleteModeloTipo,
   deleteTipoEstructura,
   deleteUnidadNegocio,
   getTiposEstructura,
   getUnidades,
   postTipoEstructura,
-  postUnidadNegocio
+  postUnidadNegocio,
+  uploadModeloTipo
 } from "../lib/api";
 import type { TipoEstructura, UnidadNegocio } from "../types";
+import TipoIcon from "../components/TipoIcon";
 
 export default function CatalogosPage() {
   const [tipos, setTipos] = useState<TipoEstructura[]>([]);
   const [unidades, setUnidades] = useState<UnidadNegocio[]>([]);
   const [newTipo, setNewTipo] = useState("");
-  const [newUnidad, setNewUnidad] = useState({ nombre: "", ubicacion: "" });
+  const [newUnidad, setNewUnidad] = useState({ nombre: "", ubicacion: "RAM" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   async function loadCatalogs() {
     const [tiposData, unidadesData] = await Promise.all([getTiposEstructura(), getUnidades()]);
@@ -60,6 +65,33 @@ export default function CatalogosPage() {
     }
   }
 
+  async function onUploadModelo(id: number, file: File) {
+    setError("");
+    setSuccess("");
+    setUploadingId(id);
+    try {
+      await uploadModeloTipo(id, file);
+      await loadCatalogs();
+      setSuccess("Modelo 3D subido correctamente.");
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "No se pudo subir el modelo.");
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
+  async function onRemoveModelo(id: number) {
+    setError("");
+    setSuccess("");
+    try {
+      await deleteModeloTipo(id);
+      await loadCatalogs();
+      setSuccess("Modelo 3D eliminado.");
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "No se pudo eliminar el modelo.");
+    }
+  }
+
   async function onAddUnidad(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -73,7 +105,7 @@ export default function CatalogosPage() {
         nombre: newUnidad.nombre.trim(),
         ubicacion: newUnidad.ubicacion.trim()
       });
-      setNewUnidad({ nombre: "", ubicacion: "" });
+      setNewUnidad({ nombre: "", ubicacion: "RAM" });
       await loadCatalogs();
       setSuccess("Unidad agregada correctamente.");
     } catch (err: any) {
@@ -112,11 +144,47 @@ export default function CatalogosPage() {
 
         <div style={{ display: "grid", gap: 8 }}>
           {tipos.map((item) => (
-            <div key={item.id} style={rowStyle()}>
-              <span>{item.nombre}</span>
-              <button type="button" style={dangerButton()} onClick={() => onRemoveTipo(item.id)}>
-                Quitar
-              </button>
+            <div key={item.id} style={tipoRowStyle()}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                <TipoIcon tipo={item.nombre} size={44} color="#2563eb" modeloUrl={item.modelo_url} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{item.nombre}</div>
+                  {item.modelo_url ? (
+                    <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>Modelo 3D cargado</div>
+                  ) : (
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Sin modelo 3D</div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <input
+                  ref={(el) => { fileRefs.current[item.id] = el; }}
+                  type="file"
+                  accept=".glb"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) onUploadModelo(item.id, file);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  style={uploadButton()}
+                  disabled={uploadingId === item.id}
+                  onClick={() => fileRefs.current[item.id]?.click()}
+                >
+                  {uploadingId === item.id ? "..." : item.modelo_url ? "Cambiar 3D" : "Subir 3D"}
+                </button>
+                {item.modelo_url && (
+                  <button type="button" style={removeModelButton()} onClick={() => onRemoveModelo(item.id)}>
+                    Quitar 3D
+                  </button>
+                )}
+                <button type="button" style={dangerButton()} onClick={() => onRemoveTipo(item.id)}>
+                  Quitar
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -184,6 +252,19 @@ function rowStyle(): CSSProperties {
   };
 }
 
+function tipoRowStyle(): CSSProperties {
+  return {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    padding: "8px 10px",
+    gap: 8,
+    flexWrap: "wrap"
+  };
+}
+
 function inputStyle(): CSSProperties {
   return {
     border: "1px solid #cbd5e1",
@@ -212,6 +293,32 @@ function dangerButton(): CSSProperties {
     padding: "8px 10px",
     background: "#dc2626",
     color: "#fff",
+    fontWeight: 700,
+    fontSize: 12,
+    cursor: "pointer"
+  };
+}
+
+function uploadButton(): CSSProperties {
+  return {
+    border: "none",
+    borderRadius: 10,
+    padding: "8px 10px",
+    background: "#7c3aed",
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: 12,
+    cursor: "pointer"
+  };
+}
+
+function removeModelButton(): CSSProperties {
+  return {
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
+    padding: "8px 10px",
+    background: "#fff",
+    color: "#64748b",
     fontWeight: 700,
     fontSize: 12,
     cursor: "pointer"

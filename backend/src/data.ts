@@ -1,70 +1,62 @@
-import { randomUUID } from "crypto";
-import { Entrega, Estructura, EstadoEstructura, TipoEstructura, UnidadNegocio } from "./types";
+import { eq, sql } from "drizzle-orm";
+import { db } from "./db/index";
+import { entregas, estructuras } from "./db/schema";
 
-export const tiposEstructura: TipoEstructura[] = [
-  { id: 1, nombre: "Mesa de trabajo", activo: true },
-  { id: 2, nombre: "Carrito", activo: true },
-  { id: 3, nombre: "Rack", activo: true },
-  { id: 4, nombre: "Soporte", activo: true },
-  { id: 5, nombre: "Conveyor", activo: true },
-  { id: 6, nombre: "Pizarron", activo: true },
-  { id: 7, nombre: "Otro", activo: true }
-];
+export async function nextFolio(): Promise<string> {
+  const result = await db
+    .select({ folio: estructuras.folio })
+    .from(estructuras)
+    .orderBy(sql`${estructuras.folio} DESC`)
+    .limit(1);
 
-export const unidadesNegocio: UnidadNegocio[] = [
-  { id: 1, nombre: "Produccion", ubicacion: "Planta Norte", activo: true },
-  { id: 2, nombre: "Ensamble", ubicacion: "Planta Norte", activo: true },
-  { id: 3, nombre: "Calidad", ubicacion: "Planta Norte", activo: true },
-  { id: 4, nombre: "Mantenimiento", ubicacion: "Planta Norte", activo: true },
-  { id: 5, nombre: "Logistica", ubicacion: "CEDIS", activo: true },
-  { id: 6, nombre: "Almacen", ubicacion: "CEDIS", activo: true }
-];
+  if (result.length === 0) {
+    return "EST-2026-0001";
+  }
 
-export const estructuras: Estructura[] = [];
+  const lastFolio = result[0].folio;
+  const match = lastFolio.match(/EST-(\d{4})-(\d+)/);
+  if (!match) {
+    return "EST-2026-0001";
+  }
 
-export const entregas: Entrega[] = [];
-
-let folioSeq = 1;
-
-export function nextFolio(): string {
-  const padded = String(folioSeq).padStart(4, "0");
-  folioSeq += 1;
-  return `EST-2026-${padded}`;
+  const year = match[1];
+  const seq = parseInt(match[2], 10) + 1;
+  return `EST-${year}-${String(seq).padStart(4, "0")}`;
 }
 
-export function totalEntregado(estructuraId: string): number {
-  return entregas
-    .filter((item) => item.estructura_id === estructuraId)
-    .reduce((sum, item) => sum + item.cantidad_entregada, 0);
+export async function totalEntregado(estructuraId: string): Promise<number> {
+  const result = await db
+    .select({ total: sql<number>`COALESCE(SUM(${entregas.cantidadEntregada}), 0)` })
+    .from(entregas)
+    .where(eq(entregas.estructuraId, estructuraId));
+
+  return Number(result[0]?.total ?? 0);
 }
 
-export function syncEstado(estructuraId: string): void {
-  const estructura = estructuras.find((item) => item.id === estructuraId);
+export async function syncEstado(estructuraId: string): Promise<void> {
+  const estructura = await db.query.estructuras.findFirst({
+    where: eq(estructuras.id, estructuraId),
+  });
+
   if (!estructura) {
     return;
   }
 
-  const total = totalEntregado(estructuraId);
-  if (total >= estructura.cantidad_fabricada) {
-    estructura.estado = "entregada";
-  } else if (estructura.estado === "entregada") {
-    estructura.estado = "terminada";
-  } else if (estructura.estado === "pendiente") {
-    estructura.estado = "en_proceso";
-  }
-}
+  const total = await totalEntregado(estructuraId);
+  let nuevoEstado = estructura.estado;
 
-export function estadoRank(estado: EstadoEstructura): number {
-  switch (estado) {
-    case "pendiente":
-      return 0;
-    case "en_proceso":
-      return 1;
-    case "terminada":
-      return 2;
-    case "entregada":
-      return 3;
-    default:
-      return 0;
+  if (total >= estructura.cantidadFabricada) {
+    nuevoEstado = "entregada";
+  } else if (estructura.estado === "entregada") {
+    nuevoEstado = "terminada";
+  } else if (estructura.estado === "pendiente") {
+    nuevoEstado = "en_proceso";
+  }
+
+  if (nuevoEstado !== estructura.estado) {
+    await db
+      .update(estructuras)
+      .set({ estado: nuevoEstado })
+      .where(eq(estructuras.id, estructuraId));
   }
 }

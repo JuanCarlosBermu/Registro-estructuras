@@ -1,0 +1,1 @@
+ALTER TABLE "tipos_estructura" ADD COLUMN "modelo_url" varchar(500);

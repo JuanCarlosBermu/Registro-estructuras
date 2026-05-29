@@ -1,0 +1,83 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  APP_NAME: registro-estructuras
+  ENV_NAME: registro-estructuras-prod
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-backend:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-backend:latest
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: VITE_API_URL=/api/v1
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-frontend:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-frontend:latest
+
+      - name: Prepare docker-compose for EB
+        run: |
+          REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          SHA="${{ github.sha }}"
+          sed -e "s|image: registro-estructuras-backend|image: $REGISTRY/${{ env.APP_NAME }}-backend:$SHA|" \
+              -e "s|image: registro-estructuras-frontend|image: $REGISTRY/${{ env.APP_NAME }}-frontend:$SHA|" \
+              docker-compose.aws.yml > docker-compose.aws.deploy.yml
+
+      - name: Create source bundle
+        run: |
+          mkdir -p deploy-bundle
+          cp docker-compose.aws.deploy.yml deploy-bundle/docker-compose.yml
+          cd deploy-bundle
+          zip -r ../${{ env.APP_NAME }}.zip .
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp ${{ env.APP_NAME }}.zip \
+            s3://elasticbeanstalk-${{ env.AWS_REGION }}-$(aws sts get-caller-identity --query Account --output text)/${{ env.APP_NAME }}/${{ github.sha }}.zip
+
+      - name: Create EB version & deploy
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name ${{ env.APP_NAME }} \
+            --version-label ${{ github.sha }} \
+            --source-bundle S3Bucket="elasticbeanstalk-${{ env.AWS_REGION }}-$(aws sts get-caller-identity --query Account --output text)",S3Key="${{ env.APP_NAME }}/${{ github.sha }}.zip" \
+            --no-cli-pager
+
+          aws elasticbeanstalk update-environment \
+            --environment-name ${{ env.ENV_NAME }} \
+            --version-label ${{ github.sha }} \
+            --no-cli-pager

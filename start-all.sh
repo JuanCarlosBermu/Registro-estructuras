@@ -24,6 +24,26 @@ echo "- Backend:  http://localhost:${BACKEND_PORT}"
 echo "- Frontend: http://localhost:${FRONTEND_PORT}"
 echo "- API URL:  ${API_URL}"
 
+if command -v docker >/dev/null 2>&1; then
+  echo "Starting PostgreSQL..."
+  docker compose -f "$ROOT_DIR/docker-compose.yml" up -d
+  echo "Waiting for PostgreSQL to be ready..."
+  for i in {1..30}; do
+    if docker compose -f "$ROOT_DIR/docker-compose.yml" exec -T postgres pg_isready -U lean >/dev/null 2>&1; then
+      echo "PostgreSQL is ready"
+      break
+    fi
+    if [ "$i" -eq 30 ]; then
+      echo "Error: PostgreSQL failed to start"
+      exit 1
+    fi
+    sleep 1
+  done
+else
+  echo "Warning: Docker not found. Skipping PostgreSQL container."
+  echo "Make sure PostgreSQL is running and DATABASE_URL is set in backend/.env"
+fi
+
 if [[ ! -d "$BACKEND_DIR/node_modules" ]]; then
   echo "Installing backend dependencies..."
   (cd "$BACKEND_DIR" && npm install)
